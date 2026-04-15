@@ -26,7 +26,7 @@ button { background:#00d084; color:white; cursor:pointer; }
 .tabs button { width:24%; }
 .page { display:none; }
 
-.small-info {
+.small-info{
  background:#1a1a1a;
  padding:10px;
  border-radius:10px;
@@ -56,6 +56,7 @@ button { background:#00d084; color:white; cursor:pointer; }
 
 <div class="small-info">
 💰 KASA: <b id="kasaText">0</b> ₺
+<button onclick="kasaSifirla()">🧨 Kasayı Sıfırla</button>
 </div>
 
 <div class="tabs">
@@ -131,13 +132,13 @@ function show(id){
  render();
 }
 
-// KAYDET
+// 💾 KAYDET
 function save(){
  localStorage.setItem("urunler", JSON.stringify(urunler));
  localStorage.setItem("kasa", kasa);
 }
 
-// ÜRÜN EKLE
+// ➕ ÜRÜN EKLE
 function urunEkle(){
  urunler.push({
   ad: ad.value,
@@ -150,17 +151,26 @@ function urunEkle(){
  render();
 }
 
-// 🗑️ SİL
+// 🗑️ ÜRÜN SİL
 function urunSil(i){
  urunler.splice(i,1);
  save();
  render();
 }
 
-// 🧨 SIFIRLA
+// 🧨 TÜM STOK SIFIRLA
 function tumStokSifirla(){
  if(!confirm("Tüm ürünler silinecek")) return;
  urunler = [];
+ save();
+ render();
+}
+
+// 💰 KASA SIFIRLA
+function kasaSifirla(){
+ if(!confirm("Kasa sıfırlanacak. Emin misin?")) return;
+
+ kasa = 0;
  save();
  render();
 }
@@ -189,7 +199,7 @@ function render(){
  grafik();
 }
 
-// 🛒 SEPET RENDER (SİLME DESTEKLİ)
+// 🛒 SEPET RENDER
 function sepetRender(){
  sepet.innerHTML = sepet.map((s,i)=>
  `<div class="card">
@@ -207,7 +217,6 @@ function sepettenSil(i){
 
 // ➕ SEPETE EKLE
 function sepeteEkle(i){
-
  if(urunler[i].stok <= 0){
   alert("Stok bitmiş");
   return;
@@ -245,8 +254,8 @@ function satis(){
  });
 
  kasa += toplamTutar;
- sepet = [];
 
+ sepet = [];
  save();
  render();
 }
