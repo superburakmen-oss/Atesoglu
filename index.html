@@ -145,5 +145,39 @@ const firebaseConfig = {
 const app = firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 </script>
+ function ekleUretim(){
+ db.collection("uretim").add({
+   urun: urun.value,
+   adet: adet.value,
+   durum: durum.value
+ });
+}
+ db.collection("uretim").onSnapshot(snapshot=>{
+ let html="";
+ snapshot.forEach(doc=>{
+   let x = doc.data();
+   html += `<div class="card">${x.urun} - ${x.adet} - ${x.durum}</div>`;
+ });
+ uretimList.innerHTML = html;
+});
+ <script src="https://unpkg.com/html5-qrcode"></script>
+
+<div id="reader"></div>
+ function baslatQR(){
+ new Html5Qrcode("reader").start(
+   { facingMode: "environment" },
+   { fps: 10 },
+   (qrCode)=>{
+     qrKaydetFirebase(qrCode);
+     alert("QR okundu: " + qrCode);
+   }
+ );
+}
+
+function qrKaydetFirebase(kod){
+ db.collection("qr").add({kod});
+}
+ <button onclick="baslatQR()">Kamerayı Aç</button>
+ 
 </body>
 </html>
