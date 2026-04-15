@@ -1,61 +1,51 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8">
-    <title>Stok Takip Sistemi</title>
-    <style>
-        body {
-            font-family: Arial;
-            margin: 20px;
-            background: #f4f4f4;
-        }
+<meta charset="UTF-8">
+<title>Stok Takip Sistemi</title>
 
-        h1 { color: #333; }
+<style>
+    body {
+        font-family: Arial;
+        margin: 20px;
+        background: #f4f4f4;
+    }
 
-        input, button {
-            padding: 10px;
-            margin: 5px;
-        }
+    h1 { color: #333; }
 
-        table {
-            width: 100%;
-            background: white;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
+    input, button {
+        padding: 10px;
+        margin: 5px;
+    }
 
-        th, td {
-            border: 1px solid #ddd;
-            padding: 10px;
-            text-align: center;
-        }
+    table {
+        width: 100%;
+        background: white;
+        border-collapse: collapse;
+        margin-top: 20px;
+    }
 
-        th {
-            background: #222;
-            color: white;
-        }
+    th, td {
+        border: 1px solid #ddd;
+        padding: 10px;
+        text-align: center;
+    }
 
-        .btn {
-            cursor: pointer;
-            border: none;
-            padding: 8px 12px;
-        }
+    th {
+        background: #222;
+        color: white;
+    }
 
-        .delete {
-            background: red;
-            color: white;
-        }
+    button {
+        cursor: pointer;
+        border: none;
+    }
 
-        .reset {
-            background: darkorange;
-            color: white;
-        }
+    .add { background: green; color: white; }
+    .delete { background: red; color: white; }
+    .reset { background: darkorange; color: white; }
+</style>
 
-        .add {
-            background: green;
-            color: white;
-        }
-    </style>
 </head>
 
 <body>
@@ -65,8 +55,8 @@
 <input type="text" id="productName" placeholder="Ürün adı">
 <input type="number" id="productQty" placeholder="Adet">
 
-<button class="btn add" onclick="addStock()">Ekle</button>
-<button class="btn reset" onclick="resetAllStocks()">Tüm Stoku Sıfırla</button>
+<button class="add" onclick="addStock()">Ekle</button>
+<button class="reset" onclick="resetAllStocks()">Tüm Stokları Sıfırla</button>
 
 <table>
     <thead>
@@ -80,9 +70,18 @@
 </table>
 
 <script>
-let stocks = JSON.parse(localStorage.getItem("stocks")) || [];
 
-// EKLE
+// 🔧 merkezi veri okuma
+function getStocks() {
+    return JSON.parse(localStorage.getItem("stocks")) || [];
+}
+
+// 💾 veri yazma
+function saveStocks(stocks) {
+    localStorage.setItem("stocks", JSON.stringify(stocks));
+}
+
+// ➕ STOK EKLE
 function addStock() {
     let name = document.getElementById("productName").value;
     let qty = document.getElementById("productQty").value;
@@ -92,12 +91,14 @@ function addStock() {
         return;
     }
 
+    let stocks = getStocks();
+
     stocks.push({
         name: name,
         quantity: Number(qty)
     });
 
-    localStorage.setItem("stocks", JSON.stringify(stocks));
+    saveStocks(stocks);
 
     document.getElementById("productName").value = "";
     document.getElementById("productQty").value = "";
@@ -105,28 +106,31 @@ function addStock() {
     renderStocks();
 }
 
-// SİL
+// 🗑️ TEK STOK SİL
 function deleteStock(index) {
+    let stocks = getStocks();
+
     stocks.splice(index, 1);
 
-    localStorage.setItem("stocks", JSON.stringify(stocks));
+    saveStocks(stocks);
 
     renderStocks();
 }
 
-// SIFIRLA
+// 🔄 TÜM STOK SIFIRLA
 function resetAllStocks() {
     if (!confirm("Tüm stoklar silinecek. Emin misin?")) return;
 
     localStorage.removeItem("stocks");
-    stocks = [];
 
     renderStocks();
 }
 
-// LİSTELE
+// 📊 LİSTELE
 function renderStocks() {
+    let stocks = getStocks();
     let table = document.getElementById("stockTable");
+
     table.innerHTML = "";
 
     stocks.forEach((item, index) => {
@@ -135,15 +139,16 @@ function renderStocks() {
                 <td>${item.name}</td>
                 <td>${item.quantity}</td>
                 <td>
-                    <button class="btn delete" onclick="deleteStock(${index})">Sil</button>
+                    <button class="delete" onclick="deleteStock(${index})">Sil</button>
                 </td>
             </tr>
         `;
     });
 }
 
-// ilk yükleme
+// 🚀 ilk yükleme
 renderStocks();
+
 </script>
 
 </body>
