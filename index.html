@@ -3,7 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Çılgın Pilavcı PRO</title>
+<title>Çılgın Pilavcı V3</title>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
 <style>
 body{
@@ -38,49 +41,21 @@ nav button{
 section{display:none;padding:10px}
 .active{display:block}
 
-/* MENU */
-.grid{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:10px;
-}
-
 .card{
     background:#1c1c1c;
     border:1px solid orange;
     padding:10px;
+    margin:5px 0;
     border-radius:10px;
 }
 
-button{
-    cursor:pointer;
-}
-
-/* CART */
-.cart{
-    background:#1a1a1a;
-    padding:10px;
-    border-radius:10px;
-    border:1px solid orange;
-}
-
-/* ADMIN */
 input{
     width:100%;
     padding:10px;
     margin:5px 0;
 }
-
-/* ORDERS */
-.order{
-    background:#222;
-    padding:10px;
-    margin:5px 0;
-    border-left:4px solid orange;
-}
-.small{
-    font-size:12px;
-    color:#aaa;
+button{
+    cursor:pointer;
 }
 </style>
 </head>
@@ -88,187 +63,170 @@ input{
 <body>
 
 <header>
-<h1>🔥 ÇILGIN PİLAVCI PRO 🔥</h1>
+<h1>🔥 ÇILGIN PİLAVCI V3 🔥</h1>
 </header>
 
 <nav>
 <button onclick="show('menu')">Menu</button>
 <button onclick="show('cart')">Sepet</button>
 <button onclick="show('admin')">Admin</button>
-<button onclick="show('kitchen')">Mutfak</button>
+<button onclick="show('orders')">Siparişler</button>
 </nav>
 
-<!-- MENU -->
-<section id="menu" class="active">
-<h2>Menü</h2>
-<div class="grid" id="menuList"></div>
-</section>
+<section id="menu" class="active"></section>
 
-<!-- CART -->
 <section id="cart">
 <h2>Sepet</h2>
-<div class="cart" id="cartList"></div>
+<div id="cartList"></div>
 <h3 id="total">Toplam: 0 TL</h3>
-<button onclick="createOrder()">Siparişi Gönder</button>
+<button onclick="createOrder()">Sipariş Ver</button>
 </section>
 
-<!-- ADMIN -->
 <section id="admin">
 <h2>Admin Panel</h2>
-
-<input id="name" placeholder="Ürün adı">
-<input id="price" placeholder="Fiyat">
+<input id="pname" placeholder="Ürün adı">
+<input id="pprice" placeholder="Fiyat">
 <button onclick="addProduct()">Ürün Ekle</button>
-
-<hr>
-
 <div id="adminList"></div>
 </section>
 
-<!-- KITCHEN -->
-<section id="kitchen">
-<h2>Mutfak Paneli</h2>
-<div id="orders"></div>
+<section id="orders">
+<h2>Siparişler</h2>
+<div id="orderList"></div>
 </section>
 
 <script>
 
-let menu = JSON.parse(localStorage.getItem("menu")) || [
-    {name:"Tavuk Pilav",price:80},
-    {name:"Double Pilav",price:110},
-    {name:"Ayran",price:20}
-];
+/* 🔥 FIREBASE CONFIG (BURAYI DOLDUR) */
+const firebaseConfig = {
+  apiKey: "XXXX",
+  authDomain: "XXXX",
+  projectId: "XXXX",
+  storageBucket: "XXXX",
+  messagingSenderId: "XXXX",
+  appId: "XXXX"
+};
 
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+/* DATA */
 let cart = [];
-let orders = JSON.parse(localStorage.getItem("orders")) || [];
-
-function save(){
-    localStorage.setItem("menu",JSON.stringify(menu));
-    localStorage.setItem("orders",JSON.stringify(orders));
-}
+let products = [];
 
 /* NAV */
 function show(id){
     document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));
     document.getElementById(id).classList.add("active");
-    renderAll();
 }
 
-/* MENU */
-function renderMenu(){
-    let html="";
-    menu.forEach((m,i)=>{
-        html+=`
-        <div class="card">
-            <b>${m.name}</b><br>
-            ${m.price} TL<br><br>
-            <button onclick="addCart(${i})">Ekle</button>
-        </div>`;
+/* 🔥 PRODUCTS */
+function loadProducts(){
+    db.collection("products").onSnapshot(snap=>{
+        products = [];
+        let html = "";
+
+        snap.forEach(doc=>{
+            let d = doc.data();
+            products.push({id:doc.id,...d});
+
+            html += `
+            <div class="card">
+                <b>${d.name}</b><br>
+                ${d.price} TL<br><br>
+                <button onclick="addCart('${doc.id}')">Ekle</button>
+            </div>`;
+        });
+
+        document.getElementById("menu").innerHTML = html;
+        renderAdmin();
     });
-    document.getElementById("menuList").innerHTML=html;
-}
-
-function addCart(i){
-    cart.push(menu[i]);
-    renderCart();
 }
 
 /* CART */
+function addCart(id){
+    let p = products.find(x=>x.id===id);
+    cart.push(p);
+    renderCart();
+}
+
 function renderCart(){
     let html="";
     let total=0;
 
-    cart.forEach((c,i)=>{
-        total+=c.price;
-        html+=`
-        <div>
-            ${c.name} - ${c.price} TL
-        </div>`;
+    cart.forEach(c=>{
+        total += Number(c.price);
+        html += `<div>${c.name} - ${c.price} TL</div>`;
     });
 
     document.getElementById("cartList").innerHTML=html;
     document.getElementById("total").innerText="Toplam: "+total+" TL";
 }
 
+/* ORDER */
 function createOrder(){
     if(cart.length==0) return alert("Sepet boş!");
 
-    let order = {
-        id:Date.now(),
-        items:[...cart],
-        status:"Hazırlanıyor"
-    };
+    db.collection("orders").add({
+        items:cart,
+        status:"Hazırlanıyor",
+        time:Date.now()
+    });
 
-    orders.push(order);
     cart=[];
-    save();
-    alert("Sipariş alındı!");
-    renderAll();
+    renderCart();
+    alert("Sipariş gönderildi 🔥");
 }
 
 /* ADMIN */
 function addProduct(){
-    let n=document.getElementById("name").value;
-    let p=parseInt(document.getElementById("price").value);
+    let name=document.getElementById("pname").value;
+    let price=document.getElementById("pprice").value;
 
-    if(!n||!p) return;
+    db.collection("products").add({
+        name,
+        price:Number(price)
+    });
 
-    menu.push({name:n,price:p});
-    save();
-    renderAll();
+    document.getElementById("pname").value="";
+    document.getElementById("pprice").value="";
 }
 
-function deleteProduct(i){
-    menu.splice(i,1);
-    save();
-    renderAll();
-}
-
+/* DELETE (basit) */
 function renderAdmin(){
     let html="";
-    menu.forEach((m,i)=>{
-        html+=`
+    products.forEach(p=>{
+        html += `
         <div class="card">
-            ${m.name} - ${m.price} TL
-            <button onclick="deleteProduct(${i})">Sil</button>
+            ${p.name} - ${p.price} TL
         </div>`;
     });
     document.getElementById("adminList").innerHTML=html;
 }
 
-/* KITCHEN */
-function finishOrder(id){
-    orders = orders.map(o=>{
-        if(o.id==id) o.status="Hazırlandı";
-        return o;
+/* ORDERS */
+function loadOrders(){
+    db.collection("orders").orderBy("time","desc")
+    .onSnapshot(snap=>{
+        let html="";
+
+        snap.forEach(doc=>{
+            let d=doc.data();
+
+            html += `
+            <div class="card">
+                <b>${d.status}</b><br>
+                ${d.items.map(i=>i.name).join(", ")}
+            </div>`;
+        });
+
+        document.getElementById("orderList").innerHTML=html;
     });
-    save();
-    renderAll();
 }
 
-function renderKitchen(){
-    let html="";
-    orders.forEach(o=>{
-        html+=`
-        <div class="order">
-            <b>#${o.id}</b><br>
-            ${o.items.map(i=>i.name).join(", ")}<br>
-            <span class="small">${o.status}</span><br><br>
-            <button onclick="finishOrder(${o.id})">Hazırlandı</button>
-        </div>`;
-    });
-    document.getElementById("orders").innerHTML=html;
-}
-
-/* MAIN */
-function renderAll(){
-    renderMenu();
-    renderCart();
-    renderAdmin();
-    renderKitchen();
-}
-
-renderAll();
+/* INIT */
+loadProducts();
+loadOrders();
 
 </script>
 
