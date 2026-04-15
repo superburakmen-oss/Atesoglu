@@ -1,122 +1,31 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ATEŞOĞLU MARKET PRO</title>
-
-<style>
-body { font-family:Arial; background:#111; color:#fff; padding:10px; }
-h1 { text-align:center; color:#00d084; }
-input, button { width:100%; padding:10px; margin:5px 0; border:none; border-radius:8px; }
-button { background:#00d084; color:white; }
-.card { background:#222; padding:10px; margin-top:10px; border-radius:10px; }
-.page { display:none; }
-</style>
-
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-
-</head>
-
-<body>
-
-<h1>🛒 ATEŞOĞLU MARKET PRO</h1>
-
-<div>
-<button onclick="show('urun')">Ürün</button>
-<button onclick="show('satis')">Satış</button>
-<button onclick="show('rapor')">Rapor</button>
-</div>
-
-<!-- ÜRÜN -->
-<div id="urun" class="page">
-<input id="ad" placeholder="Ürün adı">
-<input id="fiyat" type="number" placeholder="Fiyat">
-<input id="stok" type="number" placeholder="Stok">
-<button onclick="urunEkle()">Ekle</button>
-<div id="urunList"></div>
-</div>
-
-<!-- SATIŞ -->
-<div id="satis" class="page">
-<div id="urunSec"></div>
-
-<h3>Sepet</h3>
-<div id="sepet"></div>
-
-<h3>Toplam: <span id="toplam">0</span> ₺</h3>
-
-<button onclick="odemeTip='Nakit'">Nakit</button>
-<button onclick="odemeTip='POS'">POS</button>
-
-<button onclick="satis()">Satışı Bitir</button>
-<button onclick="fisYazdir()">🖨️ Fiş Yazdır</button>
-
-<div id="fatura"></div>
-</div>
-
-<!-- RAPOR -->
-<div id="rapor" class="page">
-<div id="raporPanel"></div>
-<button onclick="raporSifirla()">Raporu Sıfırla</button>
-</div>
-
+<!-- SADECE SCRIPT KISMI DEĞİŞTİ -->
 <script>
 
-// 🔥 FIREBASE CONFIG BURAYA
-const firebaseConfig = {
-  apiKey: "BURAYA",
-  authDomain: "BURAYA",
-  projectId: "BURAYA"
-};
-
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-
-// DATA
-let urunler = [];
+let urunler = JSON.parse(localStorage.getItem("urunler")) || [];
 let sepet = [];
-let satislar = [];
-let odemeTip = null;
+let kasa = Number(localStorage.getItem("kasa")) || 0;
 
-// SAYFA
-function show(id){
- document.querySelectorAll(".page").forEach(x=>x.style.display="none");
- document.getElementById(id).style.display="block";
+// 💾 SAVE
+function save(){
+ localStorage.setItem("urunler", JSON.stringify(urunler));
+ localStorage.setItem("kasa", kasa);
 }
 
-// ÜRÜN EKLE
-function urunEkle(){
- db.collection("urunler").add({
-  ad: ad.value,
-  fiyat: Number(fiyat.value),
-  stok: Number(stok.value)
- });
-}
-
-// CANLI ÜRÜNLER
-db.collection("urunler").onSnapshot(snap=>{
- urunler=[];
- snap.forEach(doc=>{
-  let u=doc.data();
-  u.id=doc.id;
-  urunler.push(u);
- });
- render();
-});
-
-// SEPETE EKLE (ADETLİ)
+// 🛒 SEPETE EKLE (ADET SORAR)
 function sepeteEkle(i){
 
- let miktar = prompt("Kaç adet?");
+ let miktar = prompt("Kaç adet eklemek istiyorsun?");
  if(!miktar) return;
 
  miktar = Number(miktar);
 
+ if(miktar <= 0){
+  alert("Geçersiz miktar");
+  return;
+ }
+
  if(urunler[i].stok < miktar){
-  alert("Stok yok");
+  alert("Yeterli stok yok!");
   return;
  }
 
@@ -129,71 +38,78 @@ function sepeteEkle(i){
  render();
 }
 
-// SATIŞ
+// 📊 RENDER
+function render(){
+
+ kasaText.innerText = kasa;
+
+ // ürün listesi
+ urunList.innerHTML = urunler.map((u,i)=>
+ `<div class="card">
+  ${u.ad} - ${u.fiyat}₺ - Stok:${u.stok}
+  <button onclick="urunSil(${i})">Sil</button>
+ </div>`
+ ).join("");
+
+ // ürün seçme
+ urunSec.innerHTML = urunler.map((u,i)=>
+ `<div class="card" onclick="sepeteEkle(${i})">
+  ${u.ad}
+ </div>`
+ ).join("");
+
+ // 🛒 sepet
+ sepet.innerHTML = sepet.map((s,i)=>
+ `<div class="card">
+  ${s.ad} - ${s.fiyat}₺ x ${s.adet}
+ </div>`
+ ).join("");
+
+ // 💰 toplam
+ let t = sepet.reduce((a,b)=>a+(b.fiyat*b.adet),0);
+ toplam.innerText = t;
+
+ grafik();
+}
+
+// 💰 SATIŞ (ADETLİ)
 function satis(){
 
- if(!odemeTip) return alert("Ödeme seç");
+ if(sepet.length === 0){
+  alert("Sepet boş");
+  return;
+ }
 
  let toplamTutar = sepet.reduce((a,b)=>a+(b.fiyat*b.adet),0);
 
- let veri = {
-  tarih: new Date().toLocaleString(),
-  toplam: toplamTutar,
-  odeme: odemeTip,
-  urunler: sepet
- };
+ let tarih = new Date().toLocaleString();
 
- db.collection("satislar").add(veri);
+ let faturaHTML = `
+ <h3>🧾 FATURA</h3>
+ <hr>
+ <b>Tarih:</b> ${tarih}<br>
+ <hr>
+ ${sepet.map(s=>`<div>${s.ad} - ${s.adet} x ${s.fiyat}₺</div>`).join("")}
+ <hr>
+ <b>TOPLAM: ${toplamTutar} ₺</b>
+ `;
 
- sepet=[]; odemeTip=null;
-}
+ fatura.innerHTML = faturaHTML;
 
-// RAPOR
-db.collection("satislar").onSnapshot(snap=>{
- satislar=[];
- snap.forEach(doc=>satislar.push(doc.data()));
-
- let gelir = satislar.reduce((a,b)=>a+b.toplam,0);
-
- raporPanel.innerHTML = "Toplam Gelir: "+gelir+" ₺";
-});
-
-// RENDER
-function render(){
-
- urunList.innerHTML = urunler.map((u,i)=>
- `<div class="card">${u.ad} (${u.stok})</div>`
- ).join("");
-
- urunSec.innerHTML = urunler.map((u,i)=>
- `<div class="card" onclick="sepeteEkle(${i})">${u.ad}</div>`
- ).join("");
-
- sepet.innerHTML = sepet.map(s=>
- `<div class="card">${s.ad} x ${s.adet}</div>`
- ).join("");
-
- toplam.innerText = sepet.reduce((a,b)=>a+(b.fiyat*b.adet),0);
-}
-
-// FİŞ
-function fisYazdir(){
- let win = window.open();
- win.document.write(sepet.map(s=>s.ad+" x "+s.adet).join("<br>"));
- win.print();
-}
-
-// RAPOR SIFIRLA
-function raporSifirla(){
- if(!confirm("Silinsin mi?")) return;
- db.collection("satislar").get().then(snap=>{
-  snap.forEach(doc=>doc.ref.delete());
+ // stok düş
+ sepet.forEach(s=>{
+  let u = urunler.find(x=>x.ad == s.ad);
+  if(u){
+   u.stok -= s.adet;
+  }
  });
-}
 
-show("urun");
+ kasa += toplamTutar;
+
+ sepet = [];
+
+ save();
+ render();
+}
 
 </script>
-
-</body>
-</html>
