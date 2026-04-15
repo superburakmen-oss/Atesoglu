@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Çılgın Pilavcı</title>
+
+<style>
+body{
+    margin:0;
+    font-family:Arial;
+    background:#0f0f0f;
+    color:white;
+}
+
+/* HEADER */
+header{
+    background:linear-gradient(90deg,orange,#ff5e00);
+    padding:20px;
+    text-align:center;
+}
+header h1{
+    margin:0;
+    color:black;
+    font-size:28px;
+    font-weight:bold;
+}
+
+/* MENU */
+.container{
+    padding:15px;
+}
+
+.menu{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+}
+
+.card{
+    background:#1c1c1c;
+    border:1px solid orange;
+    padding:10px;
+    border-radius:10px;
+}
+
+.card h3{
+    margin:0;
+    color:orange;
+}
+
+.price{
+    color:#ccc;
+    margin:5px 0;
+}
+
+button{
+    width:100%;
+    padding:8px;
+    background:orange;
+    border:none;
+    font-weight:bold;
+    cursor:pointer;
+    border-radius:6px;
+}
+
+/* CART */
+.cart{
+    margin-top:20px;
+    background:#1a1a1a;
+    padding:10px;
+    border-radius:10px;
+    border:1px solid orange;
+}
+
+.cart h2{
+    color:orange;
+}
+
+.cart-item{
+    display:flex;
+    justify-content:space-between;
+    border-bottom:1px solid #333;
+    padding:5px 0;
+}
+
+.total{
+    margin-top:10px;
+    font-size:18px;
+    color:orange;
+}
+
+.whatsapp{
+    margin-top:10px;
+    background:#25D366;
+    color:white;
+    padding:10px;
+    border:none;
+    width:100%;
+    border-radius:8px;
+    font-weight:bold;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <h1>🔥 ÇILGIN PİLAVCI 🔥</h1>
+    <p>Lezzetin Çılgın Hali</p>
+</header>
+
+<div class="container">
+
+    <div class="menu">
+        <div class="card">
+            <h3>Tavuk Pilav</h3>
+            <div class="price">80 TL</div>
+            <button onclick="add('Tavuk Pilav',80)">Ekle</button>
+        </div>
+
+        <div class="card">
+            <h3>Double Tavuk Pilav</h3>
+            <div class="price">110 TL</div>
+            <button onclick="add('Double Tavuk Pilav',110)">Ekle</button>
+        </div>
+
+        <div class="card">
+            <h3>Ayran</h3>
+            <div class="price">20 TL</div>
+            <button onclick="add('Ayran',20)">Ekle</button>
+        </div>
+
+        <div class="card">
+            <h3>Turşu</h3>
+            <div class="price">15 TL</div>
+            <button onclick="add('Turşu',15)">Ekle</button>
+        </div>
+    </div>
+
+    <div class="cart">
+        <h2>🛒 Sepet</h2>
+        <div id="cart"></div>
+        <div class="total" id="total">Toplam: 0 TL</div>
+
+        <button class="whatsapp" onclick="sendOrder()">
+            WhatsApp ile Sipariş Ver
+        </button>
+    </div>
+
+</div>
+
+<script>
+let cart = [];
+
+function add(name, price){
+    cart.push({name,price});
+    render();
+    save();
+}
+
+function render(){
+    let html = "";
+    let total = 0;
+
+    cart.forEach((item,i)=>{
+        total += item.price;
+        html += `
+        <div class="cart-item">
+            <span>${item.name}</span>
+            <span>${item.price} TL</span>
+        </div>`;
+    });
+
+    document.getElementById("cart").innerHTML = html;
+    document.getElementById("total").innerText = "Toplam: " + total + " TL";
+}
+
+function save(){
+    localStorage.setItem("cart", JSON.stringify(cart));
+}
+
+function load(){
+    let data = localStorage.getItem("cart");
+    if(data){
+        cart = JSON.parse(data);
+        render();
+    }
+}
+
+function sendOrder(){
+    if(cart.length === 0){
+        alert("Sepet boş!");
+        return;
+    }
+
+    let msg = "🔥 Çılgın Pilavcı Sipariş 🔥%0A";
+    let total = 0;
+
+    cart.forEach(item=>{
+        msg += "- " + item.name + " " + item.price + " TL%0A";
+        total += item.price;
+    });
+
+    msg += "%0AToplam: " + total + " TL";
+
+    let phone = "905xxxxxxxxx"; // BURAYA NUMARA YAZ
+    window.open(`https://wa.me/${phone}?text=${msg}`, "_blank");
+}
+
+load();
+</script>
+
+</body>
+</html>
