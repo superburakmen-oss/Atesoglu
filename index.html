@@ -90,6 +90,12 @@ button { background:#00d084; color:white; cursor:pointer; }
 
 <h3>Toplam: <span id="toplam">0</span> ₺</h3>
 
+<!-- 💳 ÖDEME TİPİ -->
+<button onclick="odemeTip='Nakit'">💵 Nakit</button>
+<button onclick="odemeTip='POS'">💳 POS</button>
+
+<h4>Seçilen: <span id="odemeText">Yok</span></h4>
+
 <button onclick="satis()">Satışı Bitir</button>
 
 <div id="fatura" class="card"></div>
@@ -105,6 +111,10 @@ button { background:#00d084; color:white; cursor:pointer; }
 <!-- RAPOR -->
 <div id="rapor" class="page">
 <canvas id="chart"></canvas>
+
+<div class="card" id="raporPanel"></div>
+
+<button onclick="raporSifirla()">🧨 Raporu Sıfırla</button>
 <button onclick="excel()">Excel indir</button>
 </div>
 
@@ -115,6 +125,11 @@ button { background:#00d084; color:white; cursor:pointer; }
 let urunler = JSON.parse(localStorage.getItem("urunler")) || [];
 let sepet = [];
 let kasa = Number(localStorage.getItem("kasa")) || 0;
+
+// 📊 SATIŞ KAYDI (RAPOR)
+let satislar = JSON.parse(localStorage.getItem("satislar")) || [];
+
+let odemeTip = null;
 
 // LOGIN
 function login(){
@@ -132,10 +147,11 @@ function show(id){
  render();
 }
 
-// 💾 KAYDET
+// 💾 SAVE
 function save(){
  localStorage.setItem("urunler", JSON.stringify(urunler));
  localStorage.setItem("kasa", kasa);
+ localStorage.setItem("satislar", JSON.stringify(satislar));
 }
 
 // ➕ ÜRÜN EKLE
@@ -158,7 +174,7 @@ function urunSil(i){
  render();
 }
 
-// 🧨 TÜM STOK SIFIRLA
+// 🧨 STOK SIFIRLA
 function tumStokSifirla(){
  if(!confirm("Tüm ürünler silinecek")) return;
  urunler = [];
@@ -168,8 +184,7 @@ function tumStokSifirla(){
 
 // 💰 KASA SIFIRLA
 function kasaSifirla(){
- if(!confirm("Kasa sıfırlanacak. Emin misin?")) return;
-
+ if(!confirm("Kasa sıfırlanacak")) return;
  kasa = 0;
  save();
  render();
@@ -191,34 +206,25 @@ function render(){
  `<div class="card" onclick="sepeteEkle(${i})">${u.ad}</div>`
  ).join("");
 
- sepetRender();
+ sepet.innerHTML = sepet.map((s,i)=>
+ `<div class="card">
+  ${s.ad} - ${s.fiyat}₺
+ </div>`
+ ).join("");
 
  let t = sepet.reduce((a,b)=>a+b.fiyat,0);
  toplam.innerText = t;
 
+ odemeText.innerText = odemeTip || "Yok";
+
+ raporRender();
  grafik();
-}
-
-// 🛒 SEPET RENDER
-function sepetRender(){
- sepet.innerHTML = sepet.map((s,i)=>
- `<div class="card">
-  ${s.ad} - ${s.fiyat}₺
-  <button onclick="sepettenSil(${i})">❌</button>
- </div>`
- ).join("");
-}
-
-// ❌ SEPETTEN SİL
-function sepettenSil(i){
- sepet.splice(i,1);
- render();
 }
 
 // ➕ SEPETE EKLE
 function sepeteEkle(i){
  if(urunler[i].stok <= 0){
-  alert("Stok bitmiş");
+  alert("Stok yok");
   return;
  }
 
@@ -226,8 +232,13 @@ function sepeteEkle(i){
  render();
 }
 
-// 💰 SATIŞ + FATURA
+// 💰 SATIŞ + FATURA + RAPOR
 function satis(){
+
+ if(!odemeTip){
+  alert("Ödeme tipi seç!");
+  return;
+ }
 
  if(sepet.length === 0){
   alert("Sepet boş");
@@ -236,8 +247,13 @@ function satis(){
 
  let toplamTutar = sepet.reduce((a,b)=>a+b.fiyat,0);
 
+ let tarih = new Date().toLocaleString();
+
  let faturaHTML = `
  <h3>🧾 FATURA</h3>
+ <hr>
+ <b>Tarih:</b> ${tarih}<br>
+ <b>Ödeme:</b> ${odemeTip}<br>
  <hr>
  ${sepet.map(s=>`<div>${s.ad} - ${s.fiyat}₺</div>`).join("")}
  <hr>
@@ -246,16 +262,60 @@ function satis(){
 
  fatura.innerHTML = faturaHTML;
 
+ // stok düş
  sepet.forEach(s=>{
   let u = urunler.find(x=>x.ad == s.ad);
-  if(u && u.stok > 0){
-   u.stok--;
-  }
+  if(u && u.stok > 0) u.stok--;
  });
 
  kasa += toplamTutar;
 
+ // RAPOR KAYDI
+ satislar.push({
+  tarih,
+  odeme: odemeTip,
+  toplam: toplamTutar,
+  urunler: sepet.map(s=>s.ad)
+ });
+
  sepet = [];
+ odemeTip = null;
+
+ save();
+ render();
+}
+
+// 📊 RAPOR PANEL
+function raporRender(){
+
+ let gelir = satislar.reduce((a,b)=>a+b.toplam,0);
+
+ let urunMap = {};
+
+ satislar.forEach(s=>{
+  s.urunler.forEach(u=>{
+   urunMap[u] = (urunMap[u] || 0) + 1;
+  });
+ });
+
+ let urunHTML = Object.keys(urunMap).map(k=>
+ `<div>${k}: ${urunMap[k]} adet</div>`
+ ).join("");
+
+ raporPanel.innerHTML = `
+ <h3>📊 RAPOR</h3>
+ 💰 Kasa: ${kasa} ₺<br>
+ 📈 Toplam Gelir: ${gelir} ₺<br>
+ <hr>
+ <b>Ürün Satışları:</b><br>
+ ${urunHTML}
+ `;
+}
+
+// 🧨 RAPOR SIFIRLA
+function raporSifirla(){
+ if(!confirm("Rapor silinecek")) return;
+ satislar = [];
  save();
  render();
 }
@@ -277,8 +337,7 @@ function kamera(){
   { fps:10 },
   code=>{
    let u = urunler.find(x=>x.kod==code);
-   if(u){
-    if(u.stok <= 0) return alert("Stok yok");
+   if(u && u.stok > 0){
     sepet.push({...u});
     render();
    }
@@ -299,10 +358,10 @@ function grafik(){
 
 // 📁 EXCEL
 function excel(){
- let ws = XLSX.utils.json_to_sheet(urunler);
+ let ws = XLSX.utils.json_to_sheet(satislar);
  let wb = XLSX.utils.book_new();
- XLSX.utils.book_append_sheet(wb, ws, "Market");
- XLSX.writeFile(wb, "market.xlsx");
+ XLSX.utils.book_append_sheet(wb, ws, "Rapor");
+ XLSX.writeFile(wb, "rapor.xlsx");
 }
 
 show("urun");
